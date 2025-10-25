@@ -1,0 +1,13 @@
+# Core ML & DL libraries
+tensorflow
+numpy
+pandas
+scikit-learn
+
+# Image processing
+Pillow
+opencv-python
+
+# Streamlit for deployment
+streamlit
+streamlit-drawable-canvas
