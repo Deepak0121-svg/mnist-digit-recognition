@@ -1,0 +1,14 @@
+.venv/
+
+# Ignore large datasets and sample files
+mnist-in-csv/
+MINST_Digit/
+sample/
+
+# Python cache and system files
+__pycache__/
+*.pyc
+.DS_Store
+
+# Keep trained model for deployment
+!cnn_model.h5
