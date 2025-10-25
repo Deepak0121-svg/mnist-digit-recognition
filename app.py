@@ -1,4 +1,9 @@
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
 import streamlit as st
+import tensorflow as tf
+
 import numpy as np
 from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
