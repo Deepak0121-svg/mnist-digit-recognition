@@ -4,11 +4,12 @@ import numpy as np
 import tensorflow as tf
 
 # -------------------------
-# Load Model
+# Load Model safely
 # -------------------------
 @st.cache_resource
 def load_cnn_model():
-    model = tf.keras.models.load_model("mnist_cnn_model.h5")
+    # Load old .h5 model safely
+    model = tf.keras.models.load_model("mnist_cnn_model.h5", compile=False)
     return model
 
 cnn_model = load_cnn_model()
@@ -21,12 +22,11 @@ st.title("🖌️ MNIST Digit Recognizer")
 st.write("Upload an image of a digit (0-9) and let the model predict it!")
 
 # -------------------------
-# Function to preprocess images
+# Preprocess function
 # -------------------------
 def preprocess_image(img):
     img = img.convert("L")                 # Grayscale
     img = ImageOps.invert(img)             # Invert colors for MNIST
-    img = img.filter(ImageFilter.GaussianBlur(radius=1))  # Optional smoothing
     img = img.resize((28, 28))             # Resize to 28x28
     img_array = np.array(img).reshape(1, 28, 28, 1) / 255.0
     return img_array
