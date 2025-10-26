@@ -1,70 +1,57 @@
-import os
-from flask import Flask, render_template, request
+# app.py
+import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image, ImageOps
-import matplotlib.pyplot as plt
-import io
-import base64
+import os
 
-app = Flask(__name__)
+# -------------------------
+# Page config
+# -------------------------
+st.set_page_config(page_title="MNIST Digit Recognizer", layout="wide")
 
+st.title("🖼️ MNIST Digit Recognizer")
+st.write("Upload a handwritten digit image, and the model will predict it!")
+
+# -------------------------
 # Load model
-model = tf.keras.models.load_model("mnist_cnn_model.h5", compile=False)
+# -------------------------
+@st.cache_resource
+def load_model():
+    model_path = "mnist_cnn_model_saved"  # path to SavedModel
+    model = tf.keras.models.load_model(model_path)
+    return model
 
-def predict_digit(img):
-    """
-    Predict digit, get confidence scores and top-3 predictions.
-    """
-    img = img.convert("L")  # Grayscale
-    img = ImageOps.invert(img)  # Invert colors if needed
+cnn_model = load_model()
+
+# -------------------------
+# Sidebar sample images
+# -------------------------
+st.sidebar.header("Sample Digits")
+sample_dir = "./sample"  # folder containing sample images
+sample_files = [f for f in os.listdir(sample_dir) if f.endswith(".png")]
+
+for f in sample_files:
+    img = Image.open(os.path.join(sample_dir, f))
+    st.sidebar.image(img, caption=f, use_column_width=True)
+
+# -------------------------
+# Image upload
+# -------------------------
+uploaded_file = st.file_uploader("Upload a digit image (PNG/JPG)", type=["png","jpg","jpeg"])
+
+if uploaded_file is not None:
+    img = Image.open(uploaded_file).convert("L")  # grayscale
+    img = ImageOps.invert(img)  # invert if white digit on black background
     img = img.resize((28,28))
     img_array = np.array(img).reshape(1,28,28,1)/255.0
 
-    preds = model.predict(img_array)[0]
-    predicted_digit = np.argmax(preds)
-    top3_indices = preds.argsort()[-3:][::-1]
-    top3_scores = preds[top3_indices]
+    # Prediction
+    prediction = cnn_model.predict(img_array)
+    predicted_digit = np.argmax(prediction)
+    confidence = np.max(prediction)*100
 
-    return predicted_digit, preds, top3_indices, top3_scores
-
-def plot_predictions(preds):
-    """
-    Returns a base64 PNG image of the predictions bar chart.
-    """
-    plt.figure(figsize=(6,4))
-    plt.bar(range(10), preds, color='skyblue')
-    plt.xticks(range(10))
-    plt.xlabel("Digit")
-    plt.ylabel("Confidence")
-    plt.title("Prediction Confidence")
-    
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    img_base64 = base64.b64encode(buf.getvalue()).decode('ascii')
-    plt.close()
-    return img_base64
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    predicted_digit = None
-    top3 = None
-    chart = None
-    if request.method == "POST":
-        file = request.files.get("file")
-        if file:
-            img = Image.open(file)
-            predicted_digit, preds, top3_indices, top3_scores = predict_digit(img)
-            top3 = list(zip(top3_indices, top3_scores))
-            chart = plot_predictions(preds)
-
-    return render_template(
-        "index.html",
-        predicted_digit=predicted_digit,
-        top3=top3,
-        chart=chart
-    )
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    # Display results
+    st.image(img, caption="Uploaded Image", width=150)
+    st.success(f"Predicted Digit: {predicted_digit}")
+    st.info(f"Confidence: {confidence:.2f}%")
