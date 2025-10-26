@@ -1,48 +1,60 @@
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Suppress TensorRT & TF warnings
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Suppress TensorRT warnings
 
 import streamlit as st
 import numpy as np
 from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
 import tensorflow as tf
-from tensorflow.keras.models import load_model, model_from_json
+from tensorflow.keras.models import load_model
+from tensorflow.keras.layers import InputLayer
 
-# --- Function to safely load older .h5 models ---
-def safe_load_model(path):
+
+# --- Patch for legacy InputLayer configs (ignore batch_shape etc.) ---
+class FixedInputLayer(InputLayer):
+    def __init__(self, **kwargs):
+        # Remove deprecated args safely
+        kwargs.pop("batch_shape", None)
+        kwargs.pop("batch_input_shape", None)
+        super().__init__(**kwargs)
+
+
+# --- Safe loader with fallback ---
+def safe_load_model(model_path):
     try:
-        return load_model(path, compile=False)
+        # Try normally first
+        return load_model(model_path, compile=False)
     except Exception as e:
-        st.warning("⚠️ Falling back to legacy loader due to incompatibility...")
+        st.warning("⚠️ Compatibility issue detected, retrying with custom InputLayer...")
         try:
-            from keras.saving import legacy_h5_format
-            with open(path, "rb") as f:
-                return legacy_h5_format.load_model_from_hdf5(f)
+            from tensorflow.keras.utils import get_custom_objects
+            get_custom_objects()["InputLayer"] = FixedInputLayer
+            return load_model(model_path, compile=False)
         except Exception as e2:
-            st.error(f"❌ Could not load model: {e2}")
+            st.error(f"❌ Model load failed: {e2}")
             st.stop()
 
-# --- Load the trained CNN model safely ---
+
+# --- Load your model ---
 cnn_model = safe_load_model("mnist_cnn_model.h5")
 
-# --- Streamlit UI setup ---
-st.set_page_config(page_title="MNIST Digit Recognition", page_icon="✏️", layout="centered")
-
+# --- Streamlit UI ---
+st.set_page_config(page_title="MNIST Digit Recognition", page_icon="✏️")
 st.title("🖌️ MNIST Digit Recognition with Draw Feature")
-st.write("Draw a digit (0–9) below and click **Predict!**")
+st.write("Draw a digit (0–9) below and click Predict!")
 
-# --- Drawing canvas setup ---
+# --- Drawing canvas ---
 canvas_result = st_canvas(
     stroke_width=10,
     stroke_color="white",
     background_color="black",
     height=280,
-    width=480,
+    width=280,
     drawing_mode="freedraw",
     key="canvas",
 )
 
-# --- Prediction logic ---
+# --- Prediction ---
 if st.button("Predict"):
     if canvas_result.image_data is not None:
         img = Image.fromarray((255 - canvas_result.image_data[:, :, 0]).astype("uint8"))
@@ -56,10 +68,9 @@ if st.button("Predict"):
 
         st.success(f"✅ Predicted Digit: **{digit}**")
         st.write(f"Confidence: **{confidence:.2f}%**")
-
         st.image(img, caption="Processed Input (28x28)", width=100)
     else:
         st.warning("⚠️ Please draw a digit first!")
 
 st.markdown("---")
-st.caption("Developed with ❤️ using Streamlit and TensorFlow")
+st.caption("Developed with ❤️ using Streamlit + TensorFlow")
