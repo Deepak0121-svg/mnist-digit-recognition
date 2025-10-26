@@ -1,27 +1,38 @@
+import os
 import streamlit as st
 import numpy as np
 from PIL import Image, ImageOps
 from streamlit_drawable_canvas import st_canvas
 import tensorflow as tf
-from tensorflow.keras.models import load_model
-from tensorflow.keras.utils import CustomObjectScope
-from tensorflow.keras.initializers import glorot_uniform
+import requests
 
-# --- Safe .h5 model loading ---
-MODEL_PATH = r"D:\MNIST_DigitRecognizer\mnist_cnn_model.h5"
+# -----------------------------
+# Model download & load
+# -----------------------------
+MODEL_URL = "YOUR_DIRECT_DOWNLOAD_LINK_HERE"  # replace with your hosted .h5 URL
+MODEL_PATH = "mnist_cnn_model.h5"
 
+if not os.path.exists(MODEL_PATH):
+    st.info("Downloading MNIST model...")
+    r = requests.get(MODEL_URL)
+    with open(MODEL_PATH, "wb") as f:
+        f.write(r.content)
+    st.success("✅ Model downloaded successfully!")
+
+# Load model safely
 try:
-    # Use CustomObjectScope to handle legacy models
-    with CustomObjectScope({'GlorotUniform': glorot_uniform()}):
-        cnn_model = load_model(MODEL_PATH)
+    cnn_model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 except Exception as e:
     st.error(f"⚠️ Error loading model: {e}")
     st.stop()
 
-# --- Streamlit UI ---
+# -----------------------------
+# Streamlit UI
+# -----------------------------
 st.title("🖌️ MNIST Digit Recognition with Draw Feature")
 st.write("Draw a digit (0–9) below and click Predict!")
 
+# Drawing canvas
 canvas_result = st_canvas(
     stroke_width=10,
     stroke_color="white",
@@ -32,16 +43,16 @@ canvas_result = st_canvas(
     key="canvas"
 )
 
-# --- Prediction ---
+# Prediction button
 if st.button("Predict"):
     if canvas_result.image_data is not None:
-        # Convert drawing to 28x28 grayscale image
+        # Convert canvas to 28x28 grayscale
         img = Image.fromarray((255 - canvas_result.image_data[:, :, 0]).astype('uint8'))
-        img = img.resize((28, 28))
+        img = img.resize((28,28))
         img = ImageOps.invert(img)
-        img_array = np.array(img).reshape(1, 28, 28, 1) / 255.0
+        img_array = np.array(img).reshape(1,28,28,1)/255.0
 
-        # Predict
+        # Predict digit
         pred = cnn_model.predict(img_array)
         digit = np.argmax(pred)
         st.success(f"✅ Predicted Digit: {digit}")
