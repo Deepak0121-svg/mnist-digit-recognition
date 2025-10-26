@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MNIST Digit Recognizer</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 700px;
+            margin-top: 50px;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #0d6efd;
+        }
+        .predicted {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 20px;
+            text-align: center;
+            color: #198754;
+        }
+        .sample-images img {
+            height: 80px;
+            margin: 5px;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+            transition: transform 0.2s;
+        }
+        .sample-images img:hover {
+            transform: scale(1.1);
+            border-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MNIST Digit Recognizer</h1>
+        
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="file" class="form-label">Upload a Handwritten Digit Image:</label>
+                <input class="form-control" type="file" id="file" name="file" accept="image/*" required>
+            </div>
+            <div class="d-grid">
+                <button class="btn btn-primary" type="submit">Predict Digit</button>
+            </div>
+        </form>
+
+        {% if predicted_digit is not none %}
+            <div class="predicted">
+                Predicted Digit: <span>{{ predicted_digit }}</span>
+            </div>
+        {% endif %}
+
+        <hr>
+
+        <h5>Sample Images:</h5>
+        <div class="sample-images d-flex flex-wrap">
+            {% for img in sample_images %}
+                <img src="{{ url_for('static', filename='sample_images/' + img) }}" alt="Sample Digit">
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
