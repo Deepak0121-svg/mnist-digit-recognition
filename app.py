@@ -1,62 +1,47 @@
 import streamlit as st
+from PIL import Image, ImageOps, ImageFilter
 import numpy as np
-from PIL import Image, ImageOps
-from streamlit_drawable_canvas import st_canvas
 import tensorflow as tf
-import os
 
-# -----------------------------
-# Model path (SavedModel folder)
-# -----------------------------
-MODEL_PATH = "mnist_cnn_model_saved"
-
-# -----------------------------
-# Load the model safely
-# -----------------------------
+# -------------------------
+# Load Model
+# -------------------------
 @st.cache_resource
-def load_model():
-    if not os.path.exists(MODEL_PATH):
-        st.error(f"❌ Model folder not found at {MODEL_PATH}. Make sure you have the SavedModel folder.")
-        st.stop()
-    model = tf.keras.models.load_model(MODEL_PATH)
+def load_cnn_model():
+    model = tf.keras.models.load_model("mnist_cnn_model.h5")
     return model
 
-cnn_model = load_model()
+cnn_model = load_cnn_model()
 
-# -----------------------------
-# Streamlit UI
-# -----------------------------
+# -------------------------
+# Page Config
+# -------------------------
 st.set_page_config(page_title="MNIST Digit Recognizer", page_icon="🖌️")
-st.title("🖌️ MNIST Digit Recognition with Draw Feature")
-st.write("Draw a digit (0–9) below and click Predict!")
+st.title("🖌️ MNIST Digit Recognizer")
+st.write("Upload an image of a digit (0-9) and let the model predict it!")
 
-# -----------------------------
-# Drawing canvas
-# -----------------------------
-canvas_result = st_canvas(
-    stroke_width=10,
-    stroke_color="white",
-    background_color="black",
-    height=280,
-    width=480,
-    drawing_mode="freedraw",
-    key="canvas"
-)
+# -------------------------
+# Function to preprocess images
+# -------------------------
+def preprocess_image(img):
+    img = img.convert("L")                 # Grayscale
+    img = ImageOps.invert(img)             # Invert colors for MNIST
+    img = img.filter(ImageFilter.GaussianBlur(radius=1))  # Optional smoothing
+    img = img.resize((28, 28))             # Resize to 28x28
+    img_array = np.array(img).reshape(1, 28, 28, 1) / 255.0
+    return img_array
 
-# -----------------------------
-# Prediction button
-# -----------------------------
-if st.button("Predict"):
-    if canvas_result.image_data is not None:
-        # Convert canvas to 28x28 grayscale image
-        img = Image.fromarray((255 - canvas_result.image_data[:, :, 0]).astype('uint8'))
-        img = img.resize((28, 28))
-        img = ImageOps.invert(img)  # ensure black background
-        img_array = np.array(img).reshape(1, 28, 28, 1) / 255.0
-
-        # Make prediction
-        pred = cnn_model.predict(img_array)
-        digit = np.argmax(pred)
-        st.success(f"✅ Predicted Digit: {digit}")
-    else:
-        st.warning("⚠️ Please draw a digit first!")
+# -------------------------
+# Upload Image
+# -------------------------
+uploaded_file = st.file_uploader("Upload a digit image", type=["png", "jpg", "jpeg"])
+if uploaded_file is not None:
+    img = Image.open(uploaded_file)
+    st.image(img.resize((140,140)), caption="Uploaded Image", width=140)
+    
+    img_array = preprocess_image(img)
+    
+    pred = cnn_model.predict(img_array)
+    digit = np.argmax(pred)
+    
+    st.success(f"Predicted Digit: **{digit}**")
